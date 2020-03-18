@@ -4,10 +4,11 @@ enum state
   PowerOff,
   PowerOn,
   Idle,
-  RunForward,
-  RunReverse,
+  RunFirst,
+  RunSecond,
   Hold,
-  Stop
+  Stop,
+  Change
 };
 
 
@@ -41,16 +42,16 @@ pumpState::newState(state reqState)
       Active = reqState;
       break;
     case Idle:
+      if (Active == PowerOn)Active = reqState;
+      break;
+    case RunFirst:
       if (Active == Idle)Active = reqState;
       break;
-    case RunForward:
-      if (Active == Idle)Active = reqState;
-      break;
-    case RunReverse:
-      if (Active == RunForward)Active = reqState;
+    case RunSecond:
+      if (Active == RunFirst)Active = reqState;
       break;
     case Hold:
-      if (Active == RunReverse)Active = reqState;
+      if (Active == RunSecond)Active = reqState;
       break;
     case Stop:
       Active = Stop;
