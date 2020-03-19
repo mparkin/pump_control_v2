@@ -19,7 +19,7 @@
      temperature
      Humidity
      DHT11 cycle time
-        
+       
 */
 
 #include "pump_functions.h"
@@ -30,8 +30,8 @@ SoftwareSerial bluetoothSerial =  SoftwareSerial(10,11);
 VirtuinoBluetooth virtuino(bluetoothSerial,9600); 
 pumpcontrols pump1;
 
-float runForward, runReverse, hold;
-unsigned int   pumpSpeed;
+float runForwardTime, runReverseTime, holdTime;       
+unsigned int   pumpSpeedCurrent,pumpSpeedRun,pumpSpeedSuck,pumpSpeedHold;
 int temperature;
 int humidity;
 float DHTperiod;
@@ -56,13 +56,26 @@ void loop() {
   // begin dummy variables
   dir = HIGH;
   dir1 = LOW;
-  pumpSpeed = 120;
+  pumpSpeedRun = 120;
+  pumpSpeedSuck = 120;
+  pumpSpeedHold = 120;
   cycles = 5;
   // end of dummy variables
   
   if ( currentState != pump1.current()) //the start stop interrupt will change pump1.,current to runFirst to start this
-  {                                     // the pump will run until the duration timer runs to zero then an ISR will change
-       pump1.run(dir,dir1,pumpSpeed);   // pump1 state to runSecond
+  {    switch(pump1.current())           // the pump will run until the duration timer runs to zero then an ISR will change
+       {
+           case RunFirst:
+              pumpSpeedCurrent = pumpSpeedRun;
+              break;
+           case RunSecond:
+              pumpSpeedCurrent = pumpSpeedSuck;
+              break;
+           default:
+               pumpSpeedCurrent = 0;
+             
+       }
+       pump1.run(dir,dir1,pumpSpeedCurrent);   // pump1 state to runSecond
        currentState = pump1.current();
   }
 
