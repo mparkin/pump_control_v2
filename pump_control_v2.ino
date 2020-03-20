@@ -30,7 +30,7 @@ SoftwareSerial bluetoothSerial =  SoftwareSerial(10,11);
 VirtuinoBluetooth virtuino(bluetoothSerial,9600); 
 pumpcontrols pump1;
 
-float runForwardTime, runReverseTime, holdTime,runTime;       
+float runTime1, runTime2, holdTime,runTime;       
 unsigned int   pumpSpeedCurrent,pumpSpeedRun,pumpSpeedSuck,pumpSpeedHold;
 int temperature;
 int humidity;
@@ -104,10 +104,13 @@ void goNextState()
     case Stop:
     case Idle:
       currentState = RunFirst;
+      runTime = runTime1;
     case RunFirst:
       currentState = RunSecond;
+      runTime = runTime2;      
     case RunSecond:
       currentState = Hold;
+      runTime = holdTime;      
     default:
       currentState = Stop;
   }
