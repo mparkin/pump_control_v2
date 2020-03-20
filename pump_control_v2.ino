@@ -1,5 +1,3 @@
-
-
 /*   Requirements
 //   Virtual Switch  for Start/Stop
 //   Start/Stop  sw  pin8 affects same boolean as Virt Start/Stop
@@ -25,12 +23,14 @@
 #include "pump_functions.h"
 #include "VirtuinoBluetooth.h"                   
 #include <SoftwareSerial.h>            
- 
+
+#define POWERSWITCH 18
+
 SoftwareSerial bluetoothSerial =  SoftwareSerial(10,11);   
 VirtuinoBluetooth virtuino(bluetoothSerial,9600); 
 pumpcontrols pump1;
 
-float runForwardTime, runReverseTime, holdTime;       
+float runForwardTime, runReverseTime, holdTime,runTime;       
 unsigned int   pumpSpeedCurrent,pumpSpeedRun,pumpSpeedSuck,pumpSpeedHold;
 int temperature;
 int humidity;
@@ -40,12 +40,28 @@ bool StartStop, runType,dir,dir1;
 state currentState;               
 
 void setup() {
-  cli();
+  cli(); //this shuts down interrupts and allows setup to initialize and configure the timers needed in loop.
+
+//set timer1 interrupts
+  TCCR1A = 0;// set entire TCCR1A register to 0
+  TCCR1B = 0;// same for TCCR1B
+  TCNT1  = 0;//initialize counter value to 0
+  // set compare match register for 1hz increments
+  OCR1A = 15624;// = (16*10^6) / (1*1024) - 1 (must be <65536)
+  // turn on CTC mode
+  TCCR1B |= (1 << WGM12);
+  // Set CS10 and CS12 bits for 1024 prescaler
+  TCCR1B |= (1 << CS12) | (1 << CS10);  
+  // enable timer compare interrupt
+  TIMSK1 |= (1 << OCIE1A);
+
   Serial.begin(115200);    
   virtuino.DEBUG=true;      
   Serial.println("Setup completed.");
   pump1.initialize(4,7,5);
   currentState = pump1.current();
+  attachInterrupt(digitalPinToInterrupt(POWERSWITCH), switchIsr, RISING);
+  sei();//allow interrupts again after setting everything up
 }
 
 void loop() {
@@ -79,4 +95,46 @@ void loop() {
        currentState = pump1.current();
   }
 
+};
+
+void goNextState()
+{
+  switch (currentState)
+  {
+    case Stop:
+    case Idle:
+      currentState = RunFirst;
+    case RunFirst:
+      currentState = RunSecond;
+    case RunSecond:
+      currentState = Hold;
+    default:
+      currentState = Stop;
+  }
+}
+
+void TimerIsr() //this is the function that occurs when the hardware interval timer hits zero
+{
+  //main function is to reload the timer conpare register, change the pump state and then restart the timer.
+  // the timer trimesout every 1 second. Then it decrements the runTime counter. 
+  // When runTime counter == 0, it sets the run state to next value.
+  runTime--; 
+  if (runTime <= 0 ) goNextState();
+  
+};
+
+void switchIsr() // when the staurt/Stop switch is operated. 
+{
+  //main function is to initiate or stop pump actions by setting the pump state and initiating the internal timer
+  if (StartStop)            //running
+  {
+    currentState = Stop;
+    StartStop = false;     //stop pump
+  }
+
+ else                       //not running 
+ {
+    currentState = RunFirst;
+    StartStop = true;       //start pump
+ }
 }
